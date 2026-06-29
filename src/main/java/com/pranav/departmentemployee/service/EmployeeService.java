@@ -5,15 +5,15 @@ import com.pranav.departmentemployee.dto.response.EmployeeResponse;
 import com.pranav.departmentemployee.entity.Department;
 import com.pranav.departmentemployee.entity.Employee;
 import com.pranav.departmentemployee.repository.DepartmentRepository;
-import com.pranav.departmentemployee.repository.EmployeeRepository;
+
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-
+import com.pranav.departmentemployee.service.persistence.EmployeePersistence;
 import java.time.LocalDateTime;
-
+import com.pranav.departmentemployee.repository.EmployeeRepository;
 
 import com.pranav.departmentemployee.kafka.producer.EmployeeProducer;
 import com.pranav.departmentemployee.event.EmployeeCreatedEvent;
@@ -24,7 +24,7 @@ import com.pranav.departmentemployee.event.EmployeeCreatedEvent;
 @RequiredArgsConstructor
 public class EmployeeService {
 
-    private final EmployeeRepository employeeRepository;
+    private final EmployeePersistence employeePersistence;
     private final DepartmentRepository departmentRepository;
     private final EmployeeProducer employeeProducer;
 
@@ -45,7 +45,7 @@ public class EmployeeService {
                 .updatedBy("admin")
                 .build();
 
-        Employee savedEmployee = employeeRepository.save(employee);
+        Employee savedEmployee = employeePersistence.save(employee);
 
         EmployeeCreatedEvent event = EmployeeCreatedEvent.builder()
                 .employeeId(savedEmployee.getEmpId())
@@ -67,7 +67,7 @@ public class EmployeeService {
 
         Pageable pageable = PageRequest.of(page, size);
 
-        return employeeRepository.findAll(pageable)
+        return employeePersistence.findAll(pageable)
                 .map(employee -> EmployeeResponse.builder()
                         .empId(employee.getEmpId())
                         .empName(employee.getEmpName())
@@ -78,7 +78,7 @@ public class EmployeeService {
     }
     public EmployeeResponse getEmployeeByName(String name) {
 
-        Employee employee = employeeRepository.findEmployeeByName(name)
+        Employee employee = employeePersistence.findEmployeeByName(name)
                 .orElseThrow(() ->
                         new RuntimeException("Employee not found"));
 
