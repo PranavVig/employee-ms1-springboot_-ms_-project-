@@ -4,6 +4,7 @@ import com.pranav.departmentemployee.dto.request.EmployeeRequest;
 import com.pranav.departmentemployee.dto.response.EmployeeResponse;
 import com.pranav.departmentemployee.entity.Department;
 import com.pranav.departmentemployee.entity.Employee;
+import com.pranav.departmentemployee.exception.EmployeeNotFoundException;
 import com.pranav.departmentemployee.repository.DepartmentRepository;
 
 import lombok.RequiredArgsConstructor;
@@ -13,8 +14,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import com.pranav.departmentemployee.service.persistence.EmployeePersistence;
 import java.time.LocalDateTime;
-import com.pranav.departmentemployee.repository.EmployeeRepository;
-
+import org.springframework.data.domain.Sort;
 import com.pranav.departmentemployee.kafka.producer.EmployeeProducer;
 import com.pranav.departmentemployee.event.EmployeeCreatedEvent;
 
@@ -63,9 +63,17 @@ public class EmployeeService {
                 .build();
     }
 
-    public Page<EmployeeResponse> getAllEmployees(int page, int size) {
+    public Page<EmployeeResponse> getAllEmployees(
+            int page,
+            int size,
+            String sortBy,
+            String direction) {
 
-        Pageable pageable = PageRequest.of(page, size);
+        Sort sort = direction.equalsIgnoreCase("desc")
+                ? Sort.by(sortBy).descending()
+                : Sort.by(sortBy).ascending();
+
+        Pageable pageable = PageRequest.of(page, size, sort);
 
         return employeePersistence.findAll(pageable)
                 .map(employee -> EmployeeResponse.builder()
@@ -80,7 +88,7 @@ public class EmployeeService {
 
         Employee employee = employeePersistence.findEmployeeByName(name)
                 .orElseThrow(() ->
-                        new RuntimeException("Employee not found"));
+                        new EmployeeNotFoundException("Employee not found"));
 
         return EmployeeResponse.builder()
                 .empId(employee.getEmpId())
@@ -89,5 +97,58 @@ public class EmployeeService {
                 .empJoiningDate(employee.getEmpJoiningDate())
                 .address(employee.getAddress())
                 .build();
+    }
+    public EmployeeResponse getEmployeeById(Long empId) {
+
+        Employee employee = employeePersistence.findById(empId)
+                .orElseThrow(() ->
+                        new EmployeeNotFoundException("Employee not found"));
+
+        return EmployeeResponse.builder()
+                .empId(employee.getEmpId())
+                .empName(employee.getEmpName().trim())
+                .departmentName(employee.getDepartment().getDeptName())
+                .empJoiningDate(employee.getEmpJoiningDate())
+                .address(employee.getAddress())
+                .build();
+    }
+    public EmployeeResponse updateEmployee(
+            Long empId,
+            EmployeeRequest request) {
+
+        String empName = request.getEmpName().trim();
+
+        Employee employee = employeePersistence.findById(empId)
+                .orElseThrow(() ->
+                        new EmployeeNotFoundException("Employee not found"));
+
+        Department department = departmentRepository.findById(request.getDeptId())
+                .orElseThrow(() ->
+                        new DepartmentNotFoundException("Department not found"));
+
+        employee.setEmpName(empName);
+        employee.setDepartment(department);
+        employee.setEmpJoiningDate(request.getEmpJoiningDate());
+        employee.setAddress(request.getAddress());
+        employee.setUpdatedAt(LocalDateTime.now());
+        employee.setUpdatedBy("admin");
+
+        Employee updatedEmployee = employeePersistence.save(employee);
+
+        return EmployeeResponse.builder()
+                .empId(updatedEmployee.getEmpId())
+                .empName(updatedEmployee.getEmpName())
+                .departmentName(updatedEmployee.getDepartment().getDeptName())
+                .empJoiningDate(updatedEmployee.getEmpJoiningDate())
+                .address(updatedEmployee.getAddress())
+                .build();
+    }
+    public void deleteEmployee(Long empId) {
+
+        Employee employee = employeePersistence.findById(empId)
+                .orElseThrow(() ->
+                        new EmployeeNotFoundException("Employee not found"));
+
+        employeePersistence.delete(employee);
     }
 }

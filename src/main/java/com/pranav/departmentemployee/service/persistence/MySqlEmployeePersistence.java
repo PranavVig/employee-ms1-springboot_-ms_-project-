@@ -7,6 +7,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import java.util.List;
 
 import java.util.Optional;
 
@@ -30,5 +31,17 @@ public class MySqlEmployeePersistence implements EmployeePersistence {
     @Override
     public Optional<Employee> findEmployeeByName(String name) {
         return employeeRepository.findEmployeeByName(name);
+    }
+    @Override
+    public Optional<Employee> findById(Long empId) {
+        return employeeRepository.findById(empId);
+    }
+    @Override
+    public void delete(Employee employee) {
+        employeeRepository.delete(employee);
+    }
+    @Override
+    public List<Employee> searchEmployees(String keyword) {
+        return employeeRepository.searchEmployees(keyword);
     }
 }

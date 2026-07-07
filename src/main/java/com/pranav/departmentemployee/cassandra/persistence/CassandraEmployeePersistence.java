@@ -10,6 +10,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -47,5 +48,21 @@ public class CassandraEmployeePersistence implements EmployeePersistence {
     @Override
     public Optional<Employee> findEmployeeByName(String name) {
         throw new UnsupportedOperationException("Not implemented");
+    }
+    @Override
+    public Optional<Employee> findById(Long empId) {
+
+        throw new UnsupportedOperationException(
+                "Not implemented for Cassandra yet");
+    }
+    @Override
+    public void delete(Employee employee) {
+        throw new UnsupportedOperationException(
+                "Delete is not implemented for Cassandra yet");
+    }
+    @Override
+    public List<Employee> searchEmployees(String keyword) {
+        throw new UnsupportedOperationException(
+                "Search is not implemented for Cassandra yet");
     }
 }

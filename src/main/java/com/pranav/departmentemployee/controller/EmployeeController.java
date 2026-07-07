@@ -28,15 +28,53 @@ public class EmployeeController {
 
     @GetMapping
     public ResponseEntity<Page<EmployeeResponse>> getAllEmployees(
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size) {
 
-        return ResponseEntity.ok(employeeService.getAllEmployees(page, size));
+            @RequestParam(defaultValue = "0") int page,
+
+            @RequestParam(defaultValue = "10") int size,
+
+            @RequestParam(defaultValue = "empName") String sortBy,
+
+            @RequestParam(defaultValue = "asc") String direction) {
+
+        return ResponseEntity.ok(
+                employeeService.getAllEmployees(
+                        page,
+                        size,
+                        sortBy,
+                        direction
+                )
+        );
     }
     @GetMapping("/name/{name}")
     public ResponseEntity<EmployeeResponse> getEmployeeByName(
             @PathVariable String name) {
 
         return ResponseEntity.ok(employeeService.getEmployeeByName(name));
+    }
+    @GetMapping("/{empId}")
+    public ResponseEntity<EmployeeResponse> getEmployeeById(
+            @PathVariable Long empId) {
+
+        return ResponseEntity.ok(
+                employeeService.getEmployeeById(empId)
+        );
+    }
+    @PutMapping("/{empId}")
+    public ResponseEntity<EmployeeResponse> updateEmployee(
+            @PathVariable Long empId,
+            @Valid @RequestBody EmployeeRequest request) {
+
+        return ResponseEntity.ok(
+                employeeService.updateEmployee(empId, request)
+        );
+    }
+    @DeleteMapping("/{empId}")
+    public ResponseEntity<Void> deleteEmployee(
+            @PathVariable Long empId) {
+
+        employeeService.deleteEmployee(empId);
+
+        return ResponseEntity.noContent().build();
     }
 }
