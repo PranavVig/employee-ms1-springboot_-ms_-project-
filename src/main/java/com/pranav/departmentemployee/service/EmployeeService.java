@@ -18,6 +18,11 @@ import org.springframework.data.domain.Sort;
 import com.pranav.departmentemployee.kafka.producer.EmployeeProducer;
 import com.pranav.departmentemployee.event.EmployeeCreatedEvent;
 
+import com.pranav.departmentemployee.entity.EmployeeAudit;
+import com.pranav.departmentemployee.enums.AuditOperation;
+import com.pranav.departmentemployee.repository.EmployeeAuditRepository;
+import java.time.LocalDate;
+import com.pranav.departmentemployee.dto.response.EmployeeAuditResponse;
 
 
 @Service
@@ -27,6 +32,7 @@ public class EmployeeService {
     private final EmployeePersistence employeePersistence;
     private final DepartmentRepository departmentRepository;
     private final EmployeeProducer employeeProducer;
+    private final EmployeeAuditRepository employeeAuditRepository;
 
     public EmployeeResponse createEmployee(EmployeeRequest request) {
 
@@ -46,6 +52,19 @@ public class EmployeeService {
                 .build();
 
         Employee savedEmployee = employeePersistence.save(employee);
+
+        saveEmployeeAudit(
+                savedEmployee,
+                AuditOperation.CREATE,
+                null,
+                savedEmployee.getEmpName(),
+                null,
+                savedEmployee.getDepartment().getDeptName(),
+                null,
+                savedEmployee.getEmpJoiningDate(),
+                null,
+                savedEmployee.getAddress()
+        );
 
         EmployeeCreatedEvent event = EmployeeCreatedEvent.builder()
                 .employeeId(savedEmployee.getEmpId())
@@ -82,6 +101,32 @@ public class EmployeeService {
                         .departmentName(employee.getDepartment().getDeptName())
                         .empJoiningDate(employee.getEmpJoiningDate())
                         .address(employee.getAddress())
+                        .build());
+    }
+    public Page<EmployeeAuditResponse> getEmployeeAudit(
+            int page,
+            int size,
+            String sortBy,
+            String direction) {
+
+        Sort sort = direction.equalsIgnoreCase("desc")
+                ? Sort.by(sortBy).descending()
+                : Sort.by(sortBy).ascending();
+
+        Pageable pageable = PageRequest.of(page, size, sort);
+
+        return employeeAuditRepository.findAll(pageable)
+                .map(audit -> EmployeeAuditResponse.builder()
+                        .operation(audit.getOperation())
+                        .auditTimestamp(audit.getAuditTimestamp())
+                        .oldEmpName(audit.getOldEmpName())
+                        .newEmpName(audit.getNewEmpName())
+                        .oldDepartmentName(audit.getOldDepartmentName())
+                        .newDepartmentName(audit.getNewDepartmentName())
+                        .oldJoiningDate(audit.getOldJoiningDate())
+                        .newJoiningDate(audit.getNewJoiningDate())
+                        .oldAddress(audit.getOldAddress())
+                        .newAddress(audit.getNewAddress())
                         .build());
     }
     public EmployeeResponse getEmployeeByName(String name) {
@@ -126,6 +171,11 @@ public class EmployeeService {
                 .orElseThrow(() ->
                         new DepartmentNotFoundException("Department not found"));
 
+        String oldEmpName = employee.getEmpName();
+        String oldDepartmentName = employee.getDepartment().getDeptName();
+        LocalDate oldJoiningDate = employee.getEmpJoiningDate();
+        String oldAddress = employee.getAddress();
+
         employee.setEmpName(empName);
         employee.setDepartment(department);
         employee.setEmpJoiningDate(request.getEmpJoiningDate());
@@ -134,7 +184,18 @@ public class EmployeeService {
         employee.setUpdatedBy("admin");
 
         Employee updatedEmployee = employeePersistence.save(employee);
-
+        saveEmployeeAudit(
+                updatedEmployee,
+                AuditOperation.UPDATE,
+                oldEmpName,
+                updatedEmployee.getEmpName(),
+                oldDepartmentName,
+                updatedEmployee.getDepartment().getDeptName(),
+                oldJoiningDate,
+                updatedEmployee.getEmpJoiningDate(),
+                oldAddress,
+                updatedEmployee.getAddress()
+        );
         return EmployeeResponse.builder()
                 .empId(updatedEmployee.getEmpId())
                 .empName(updatedEmployee.getEmpName())
@@ -150,5 +211,45 @@ public class EmployeeService {
                         new EmployeeNotFoundException("Employee not found"));
 
         employeePersistence.delete(employee);
+        saveEmployeeAudit(
+                employee,
+                AuditOperation.DELETE,
+                employee.getEmpName(),
+                null,
+                employee.getDepartment().getDeptName(),
+                null,
+                employee.getEmpJoiningDate(),
+                null,
+                employee.getAddress(),
+                null
+        );
+    }
+    private void saveEmployeeAudit(
+            Employee employee,
+            AuditOperation operation,
+            String oldEmpName,
+            String newEmpName,
+            String oldDepartmentName,
+            String newDepartmentName,
+            LocalDate oldJoiningDate,
+            LocalDate newJoiningDate,
+            String oldAddress,
+            String newAddress) {
+
+        EmployeeAudit audit = EmployeeAudit.builder()
+                .employeeId(employee.getEmpId())
+                .operation(operation)
+                .auditTimestamp(LocalDateTime.now())
+                .oldEmpName(oldEmpName)
+                .newEmpName(newEmpName)
+                .oldDepartmentName(oldDepartmentName)
+                .newDepartmentName(newDepartmentName)
+                .oldJoiningDate(oldJoiningDate)
+                .newJoiningDate(newJoiningDate)
+                .oldAddress(oldAddress)
+                .newAddress(newAddress)
+                .build();
+
+        employeeAuditRepository.save(audit);
     }
 }

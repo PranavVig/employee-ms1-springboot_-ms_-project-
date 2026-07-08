@@ -18,6 +18,12 @@ import org.springframework.data.domain.Sort;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import com.pranav.departmentemployee.entity.DepartmentAudit;
+import com.pranav.departmentemployee.enums.AuditOperation;
+import com.pranav.departmentemployee.repository.DepartmentAuditRepository;
+import com.pranav.departmentemployee.dto.response.DepartmentAuditResponse;
+import com.pranav.departmentemployee.entity.DepartmentAudit;
+
 
 @Service
 @RequiredArgsConstructor
@@ -25,6 +31,7 @@ public class DepartmentService {
 
     private final DepartmentRepository departmentRepository;
     private final EmployeeRepository employeeRepository;
+    private final DepartmentAuditRepository departmentAuditRepository;
 
     public DepartmentResponse createDepartment(DepartmentRequest request) {
         String deptName = request.getDeptName().trim();
@@ -40,7 +47,14 @@ public class DepartmentService {
                 .updatedBy("admin")
                 .build();
 
+
         Department savedDepartment = departmentRepository.save(department);
+        saveDepartmentAudit(
+                savedDepartment,
+                AuditOperation.CREATE,
+                null,
+                savedDepartment.getDeptName()
+        );
 
         return DepartmentResponse.builder()
                 .deptId(savedDepartment.getDeptId())
@@ -63,6 +77,26 @@ public class DepartmentService {
                 .map(department -> DepartmentResponse.builder()
                         .deptId(department.getDeptId())
                         .deptName(department.getDeptName())
+                        .build());
+    }
+    public Page<DepartmentAuditResponse> getDepartmentAudit(
+            int page,
+            int size,
+            String sortBy,
+            String direction) {
+
+        Sort sort = direction.equalsIgnoreCase("desc")
+                ? Sort.by(sortBy).descending()
+                : Sort.by(sortBy).ascending();
+
+        Pageable pageable = PageRequest.of(page, size, sort);
+
+        return departmentAuditRepository.findAll(pageable)
+                .map(audit -> DepartmentAuditResponse.builder()
+                        .operation(audit.getOperation())
+                        .auditTimestamp(audit.getAuditTimestamp())
+                        .oldDeptName(audit.getOldDeptName())
+                        .newDeptName(audit.getNewDeptName())
                         .build());
     }
     public DepartmentDetailsResponse getDepartmentById(Long deptId) {
@@ -114,13 +148,19 @@ public class DepartmentService {
             throw new DepartmentAlreadyExistsException(
                     "Department already exists");
         }
-
+        String oldDeptName = department.getDeptName();
         department.setDeptName(deptName);
         department.setUpdatedAt(LocalDateTime.now());
         department.setUpdatedBy("admin");
 
         Department updatedDepartment =
                 departmentRepository.save(department);
+        saveDepartmentAudit(
+                updatedDepartment,
+                AuditOperation.UPDATE,
+                oldDeptName,
+                updatedDepartment.getDeptName()
+        );
 
         return DepartmentResponse.builder()
                 .deptId(updatedDepartment.getDeptId())
@@ -142,5 +182,27 @@ public class DepartmentService {
         }
 
         departmentRepository.delete(department);
+        saveDepartmentAudit(
+                department,
+                AuditOperation.DELETE,
+                department.getDeptName(),
+                null
+        );
+    }
+    private void saveDepartmentAudit(
+            Department department,
+            AuditOperation operation,
+            String oldDeptName,
+            String newDeptName) {
+
+        DepartmentAudit audit = DepartmentAudit.builder()
+                .departmentId(department.getDeptId())
+                .operation(operation)
+                .auditTimestamp(LocalDateTime.now())
+                .oldDeptName(oldDeptName)
+                .newDeptName(newDeptName)
+                .build();
+
+        departmentAuditRepository.save(audit);
     }
 }
