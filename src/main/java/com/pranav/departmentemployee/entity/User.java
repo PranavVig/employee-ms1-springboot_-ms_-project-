@@ -3,6 +3,8 @@ package com.pranav.departmentemployee.entity;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.time.LocalDateTime;
+
 @Entity
 @Table(name = "users")
 @Getter
@@ -27,4 +29,14 @@ public class User {
 
     @Column(nullable = false)
     private Boolean enabled;
+
+    @Column(nullable = false)
+    @Builder.Default
+    private Integer failedAttempts = 0;
+
+    @Column(nullable = false)
+    @Builder.Default
+    private Boolean accountLocked = false;
+
+    private LocalDateTime lockTime;
 }
