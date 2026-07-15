@@ -30,6 +30,7 @@ public class SecurityConfig {
                 .cors(Customizer.withDefaults())
                 .userDetailsService(customUserDetailsService)
                 .authorizeHttpRequests(auth -> auth
+                        .requestMatchers("/auth/lock-status").permitAll()
                         .anyRequest().authenticated()
                 )
                 .httpBasic(Customizer.withDefaults());

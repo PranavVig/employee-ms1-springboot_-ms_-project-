@@ -4,6 +4,7 @@ import com.pranav.departmentemployee.entity.User;
 import com.pranav.departmentemployee.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import java.time.Duration;
 
 import java.time.LocalDateTime;
 
@@ -12,7 +13,7 @@ import java.time.LocalDateTime;
 public class LoginAttemptService {
 
     private static final int MAX_FAILED_ATTEMPTS = 5;
-    private static final long LOCK_DURATION_MINUTES = 10;
+    private static final long LOCK_DURATION_MINUTES = 1;
 
     private final UserRepository userRepository;
 
@@ -59,5 +60,20 @@ public class LoginAttemptService {
         }
 
         return false;
+    }
+    public long getRemainingLockTime(User user) {
+
+        if (!Boolean.TRUE.equals(user.getAccountLocked())
+                || user.getLockTime() == null) {
+            return 0;
+        }
+
+        LocalDateTime unlockTime =
+                user.getLockTime().plusMinutes(LOCK_DURATION_MINUTES);
+
+        long remainingSeconds =
+                Duration.between(LocalDateTime.now(), unlockTime).getSeconds();
+
+        return Math.max(remainingSeconds, 0);
     }
 }
