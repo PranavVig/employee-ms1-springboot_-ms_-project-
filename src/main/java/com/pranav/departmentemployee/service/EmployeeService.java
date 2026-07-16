@@ -22,7 +22,12 @@ import com.pranav.departmentemployee.entity.EmployeeAudit;
 import com.pranav.departmentemployee.enums.AuditOperation;
 import com.pranav.departmentemployee.repository.EmployeeAuditRepository;
 import java.time.LocalDate;
+import java.util.List;
+
 import com.pranav.departmentemployee.dto.response.EmployeeAuditResponse;
+
+import com.pranav.departmentemployee.service.export.CsvExportService;
+import com.pranav.departmentemployee.service.export.ExcelExportService;
 
 
 @Service
@@ -33,6 +38,9 @@ public class EmployeeService {
     private final DepartmentRepository departmentRepository;
     private final EmployeeProducer employeeProducer;
     private final EmployeeAuditRepository employeeAuditRepository;
+
+    private final CsvExportService csvExportService;
+    private final ExcelExportService excelExportService;
 
     public EmployeeResponse createEmployee(EmployeeRequest request) {
 
@@ -223,6 +231,51 @@ public class EmployeeService {
                 employee.getAddress(),
                 null
         );
+    }
+    public byte[] exportEmployeeAudit(String format) throws java.io.IOException {
+
+        List<EmployeeAudit> audits = employeeAuditRepository.findAll();
+
+        List<String> headers = List.of(
+                "Audit ID",
+                "Employee ID",
+                "Operation",
+                "Timestamp",
+                "Old Employee Name",
+                "New Employee Name",
+                "Old Department",
+                "New Department",
+                "Old Joining Date",
+                "New Joining Date",
+                "Old Address",
+                "New Address"
+        );
+        List<List<String>> rows = audits.stream()
+                .map(audit -> List.of(
+                        String.valueOf(audit.getAuditId()),
+                        String.valueOf(audit.getEmployeeId()),
+                        audit.getOperation().name(),
+                        audit.getAuditTimestamp().toString(),
+                        audit.getOldEmpName() == null ? "" : audit.getOldEmpName(),
+                        audit.getNewEmpName() == null ? "" : audit.getNewEmpName(),
+                        audit.getOldDepartmentName() == null ? "" : audit.getOldDepartmentName(),
+                        audit.getNewDepartmentName() == null ? "" : audit.getNewDepartmentName(),
+                        audit.getOldJoiningDate() == null ? "" : audit.getOldJoiningDate().toString(),
+                        audit.getNewJoiningDate() == null ? "" : audit.getNewJoiningDate().toString(),
+                        audit.getOldAddress() == null ? "" : audit.getOldAddress(),
+                        audit.getNewAddress() == null ? "" : audit.getNewAddress()
+                ))
+                .toList();
+
+        if ("csv".equalsIgnoreCase(format)) {
+            return csvExportService.generateCsv(headers, rows);
+        }
+
+        if ("xlsx".equalsIgnoreCase(format)) {
+            return excelExportService.generateExcel(headers, rows);
+        }
+
+        throw new IllegalArgumentException("Unsupported export format.");
     }
     private void saveEmployeeAudit(
             Employee employee,

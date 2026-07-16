@@ -24,6 +24,9 @@ import com.pranav.departmentemployee.repository.DepartmentAuditRepository;
 import com.pranav.departmentemployee.dto.response.DepartmentAuditResponse;
 import com.pranav.departmentemployee.entity.DepartmentAudit;
 
+import com.pranav.departmentemployee.service.export.CsvExportService;
+import com.pranav.departmentemployee.service.export.ExcelExportService;
+
 
 @Service
 @RequiredArgsConstructor
@@ -32,6 +35,9 @@ public class DepartmentService {
     private final DepartmentRepository departmentRepository;
     private final EmployeeRepository employeeRepository;
     private final DepartmentAuditRepository departmentAuditRepository;
+
+    private final CsvExportService csvExportService;
+    private final ExcelExportService excelExportService;
 
     public DepartmentResponse createDepartment(DepartmentRequest request) {
         String deptName = request.getDeptName().trim();
@@ -188,6 +194,40 @@ public class DepartmentService {
                 department.getDeptName(),
                 null
         );
+    }
+    public byte[] exportDepartmentAudit(String format) throws java.io.IOException {
+
+        List<DepartmentAudit> audits = departmentAuditRepository.findAll();
+
+        List<String> headers = List.of(
+                "Audit ID",
+                "Department ID",
+                "Operation",
+                "Timestamp",
+                "Old Department",
+                "New Department"
+        );
+
+        List<List<String>> rows = audits.stream()
+                .map(audit -> List.of(
+                        String.valueOf(audit.getAuditId()),
+                        String.valueOf(audit.getDepartmentId()),
+                        audit.getOperation().name(),
+                        audit.getAuditTimestamp().toString(),
+                        audit.getOldDeptName() == null ? "" : audit.getOldDeptName(),
+                        audit.getNewDeptName() == null ? "" : audit.getNewDeptName()
+                ))
+                .toList();
+
+        if ("csv".equalsIgnoreCase(format)) {
+            return csvExportService.generateCsv(headers, rows);
+        }
+
+        if ("xlsx".equalsIgnoreCase(format)) {
+            return excelExportService.generateExcel(headers, rows);
+        }
+
+        throw new IllegalArgumentException("Unsupported export format.");
     }
     private void saveDepartmentAudit(
             Department department,
